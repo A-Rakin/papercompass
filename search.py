@@ -48,7 +48,7 @@ class SemanticSearcher:
         self,
         question: str,
         top_k: int = 3,
-        similarity_threshold: float = 0.40
+        similarity_threshold: float = 0.20
     ) -> Dict:
         """
         Retrieve relevant context for the LLM.

@@ -1,30 +1,32 @@
 """
 ===============================================================================
 PaperCompass
-AI Research Paper Assistant
-
-Author : Your Name
+Author      : Your Name
+Project     : PaperCompass - AI Research Paper Assistant
+File        : app.py
 
 Description
 -----------
-PaperCompass is a Retrieval-Augmented Generation (RAG) application that allows
-researchers to upload one or more research papers and ask natural language
-questions.
+Main Streamlit application entry point.
 
-Main Responsibilities
----------------------
-1. Upload PDFs
-2. Build embeddings
-3. Semantic search
-4. Question answering using Groq
-5. Beautiful Streamlit UI
+Responsibilities
+----------------
+1. Configure Streamlit application.
+2. Manage session state.
+3. Handle PDF uploads.
+4. Initialize RAG pipeline.
+5. Connect UI components.
+
 ===============================================================================
 """
 
-import os
-from pathlib import Path
 
 import streamlit as st
+from pathlib import Path
+import tempfile
+from utils import load_css
+
+
 
 from pdf_loader import PDFLoader
 from chunker import TextChunker
@@ -32,624 +34,359 @@ from embeddings import EmbeddingEngine
 from search import SemanticSearcher
 from llm import PaperCompassLLM
 
-###############################################################################
-# PAGE CONFIGURATION
-###############################################################################
+
+# UI Components
+from components.sidebar import render_sidebar
+from components.dashboard import render_dashboard
+from components.chat import render_chat
+
+
+
+# =============================================================================
+# Page Configuration
+# =============================================================================
 
 st.set_page_config(
     page_title="PaperCompass",
     page_icon="📚",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    layout="wide"
 )
 
-###############################################################################
-# CUSTOM CSS
-###############################################################################
 
-st.markdown(
-    """
-<style>
 
-/* ---------------------------------------------------------- */
-/* Hide Streamlit Branding */
-/* ---------------------------------------------------------- */
+# =============================================================================
+# Session State Initialization
+# =============================================================================
 
-#MainMenu {
-    visibility:hidden;
-}
+def initialize_session():
 
-footer{
-    visibility:hidden;
-}
+    defaults = {
 
-header{
-    visibility:hidden;
-}
+        "papers": [],
 
-/* ---------------------------------------------------------- */
-/* Main background */
-/* ---------------------------------------------------------- */
+        "chunks": [],
 
-.stApp{
+        "embedding_engine": None,
 
-    background:#F4F7FC;
+        "engine": None,
 
-}
+        "searcher": None,
 
-/* ---------------------------------------------------------- */
-/* Main title */
-/* ---------------------------------------------------------- */
+        "llm": None,
 
-.main-title{
+        "processed": False,
 
-    font-size:42px;
+        "processing": False,
 
-    font-weight:700;
+        "chat_history": []
 
-    color:#1E3A8A;
+    }
 
-    margin-bottom:5px;
 
-}
+    for key, value in defaults.items():
 
-/* ---------------------------------------------------------- */
+        if key not in st.session_state:
 
-.subtitle{
+            st.session_state[key] = value
 
-    color:#5B6475;
 
-    font-size:18px;
 
-    margin-bottom:25px;
 
-}
+# =============================================================================
+# Document Processing Pipeline
+# =============================================================================
 
-/* ---------------------------------------------------------- */
-/* Paper Card */
-/* ---------------------------------------------------------- */
+def process_documents(uploaded_files):
 
-.paper-card{
+    try:
 
-    background:white;
+        st.session_state.processing = True
 
-    padding:18px;
 
-    border-radius:12px;
+        progress = st.progress(
+            0
+        )
 
-    box-shadow:0px 2px 12px rgba(0,0,0,0.08);
 
-    margin-bottom:15px;
+        status = st.empty()
 
-}
 
-/* ---------------------------------------------------------- */
-/* Answer Card */
-/* ---------------------------------------------------------- */
 
-.answer-box{
+        # ---------------------------------------------------------
+        # Save Uploaded PDFs
+        # ---------------------------------------------------------
 
-    background:white;
+        status.info(
+            "Saving uploaded papers..."
+        )
 
-    border-left:6px solid #2563EB;
 
-    padding:20px;
+        temp_dir = Path(
+            tempfile.mkdtemp()
+        )
 
-    border-radius:12px;
 
-    box-shadow:0px 3px 15px rgba(0,0,0,.08);
+        saved_files = []
 
-}
 
-/* ---------------------------------------------------------- */
+        for file in uploaded_files:
 
-.metric-box{
 
-    background:white;
+            file_path = temp_dir / file.name
 
-    border-radius:12px;
 
-    padding:15px;
+            with open(
+                file_path,
+                "wb"
+            ) as f:
 
-    text-align:center;
+                f.write(
+                    file.getbuffer()
+                )
 
-    box-shadow:0px 3px 12px rgba(0,0,0,.08);
 
-}
+            saved_files.append(
+                file_path
+            )
 
-/* ---------------------------------------------------------- */
 
-.source-box{
+        progress.progress(
+            20
+        )
 
-    background:#EEF4FF;
 
-    border-radius:10px;
 
-    padding:15px;
+        # ---------------------------------------------------------
+        # PDF Loading
+        # ---------------------------------------------------------
 
-}
+        status.info(
+            "Extracting text from PDFs..."
+        )
 
-/* ---------------------------------------------------------- */
 
-.chat-user{
+        loader = PDFLoader()
 
-    background:#DCF8C6;
 
-    padding:15px;
+        papers = loader.load_papers(
+            saved_files
+        )
 
-    border-radius:10px;
 
-}
+        progress.progress(
+            40
+        )
 
-.chat-ai{
 
-    background:white;
 
-    padding:15px;
+        # ---------------------------------------------------------
+        # Chunking
+        # ---------------------------------------------------------
 
-    border-radius:10px;
+        status.info(
+            "Creating text chunks..."
+        )
 
-}
 
-</style>
-""",
-    unsafe_allow_html=True,
-)
+        chunker = TextChunker()
 
-###############################################################################
-# SESSION STATE
-###############################################################################
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+        chunks = chunker.chunk_all_papers(
+            papers
+        )
 
-if "engine" not in st.session_state:
-    st.session_state.engine = None
 
-if "searcher" not in st.session_state:
-    st.session_state.searcher = None
+        progress.progress(
+            60
+        )
 
-if "llm" not in st.session_state:
-    st.session_state.llm = None
 
-if "papers" not in st.session_state:
-    st.session_state.papers = []
 
-if "chunks" not in st.session_state:
-    st.session_state.chunks = []
+        # ---------------------------------------------------------
+        # Embeddings + FAISS
+        # ---------------------------------------------------------
 
-###############################################################################
-# HEADER
-###############################################################################
+        status.info(
+            "Generating embeddings..."
+        )
 
-st.markdown(
-    """
-<div class="main-title">
 
-📚 PaperCompass
+        engine = EmbeddingEngine()
 
-</div>
 
-<div class="subtitle">
+        embeddings = engine.create_embeddings(
+            chunks
+        )
 
-An Intelligent Research Paper Assistant powered by
-Semantic Search, FAISS and Groq LLM.
 
-</div>
-""",
-    unsafe_allow_html=True,
-)
+        engine.build_index(
+            embeddings
+        )
 
-###############################################################################
-# TWO COLUMN LAYOUT
-###############################################################################
 
-left_col, right_col = st.columns([1, 2], gap="large")
+        progress.progress(
+            85
+        )
 
-###############################################################################
-# LEFT PANEL
-###############################################################################
 
-with left_col:
 
-    st.subheader("📂 Upload Research Papers")
+        # ---------------------------------------------------------
+        # Search + LLM
+        # ---------------------------------------------------------
 
-    uploaded_files = st.file_uploader(
-        label="Select one or more PDF papers",
-        type=["pdf"],
-        accept_multiple_files=True,
-        help="Upload research papers in PDF format."
-    )
+        status.info(
+            "Initializing AI assistant..."
+        )
 
-    st.divider()
 
-    ###########################################################################
-    # Save Uploaded Files
-    ###########################################################################
+        searcher = SemanticSearcher(
+            engine
+        )
 
-    upload_dir = Path("uploads")
-    upload_dir.mkdir(exist_ok=True)
+
+        llm = PaperCompassLLM()
+
+
+        progress.progress(
+            100
+        )
+
+
+
+        # ---------------------------------------------------------
+        # Store Session Data
+        # ---------------------------------------------------------
+
+        st.session_state.papers = papers
+
+        st.session_state.chunks = chunks
+
+        st.session_state.embedding_engine = engine
+
+        st.session_state.engine = engine
+
+        st.session_state.searcher = searcher
+
+        st.session_state.llm = llm
+
+        st.session_state.processed = True
+
+        st.session_state.processing = False
+
+
+
+        status.success(
+            "Paper processing completed successfully!"
+        )
+
+
+    except Exception as e:
+
+
+        st.session_state.processing = False
+
+
+        st.error(
+            f"Processing failed: {str(e)}"
+        )
+
+
+
+
+# =============================================================================
+# Main Application
+# =============================================================================
+
+def main():
+
+
+    initialize_session()
+
+    load_css("styles/style.css")
+
+
+
+    # Sidebar
+
+    uploaded_files = render_sidebar()
+
+
+
+    # Process Button
 
     if uploaded_files:
 
-        for uploaded_file in uploaded_files:
 
-            save_path = upload_dir / uploaded_file.name
+        if st.button(
+            "🚀 Process Papers",
+            use_container_width=True
+        ):
 
-            with open(save_path, "wb") as file:
-                file.write(uploaded_file.getbuffer())
 
-    ###########################################################################
-    # Build Knowledge Base Button
-    ###########################################################################
-
-    if st.button(
-        "🚀 Build Knowledge Base",
-        use_container_width=True,
-        type="primary"
-    ):
-
-        with st.spinner("Reading research papers..."):
-
-            loader = PDFLoader()
-
-            papers = loader.load_papers()
-
-            st.session_state.papers = papers
-
-        with st.spinner("Chunking papers..."):
-
-            chunker = TextChunker(
-                chunk_size=300,
-                overlap=50
+            process_documents(
+                uploaded_files
             )
 
-            chunks = chunker.chunk_all_papers(papers)
 
-            st.session_state.chunks = chunks
 
-        with st.spinner("Generating embeddings..."):
+    # Before Processing
 
-            engine = EmbeddingEngine()
+    if not st.session_state.processed:
 
-            embeddings = engine.create_embeddings(chunks)
 
-            engine.build_index(embeddings)
-
-        with st.spinner("Preparing semantic search..."):
-
-            searcher = SemanticSearcher(engine)
-
-            llm = PaperCompassLLM()
-
-        st.session_state.engine = engine
-        st.session_state.searcher = searcher
-        st.session_state.llm = llm
-
-        st.success("Knowledge Base Ready!")
-
-    ###########################################################################
-    # Statistics
-    ###########################################################################
-
-    st.divider()
-
-    st.subheader("📊 Statistics")
-
-    total_papers = len(st.session_state.papers)
-
-    total_chunks = len(st.session_state.chunks)
-
-    total_pages = sum(
-        paper["metadata"]["pages"]
-        for paper in st.session_state.papers
-    )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-
-        st.metric(
-            label="Papers",
-            value=total_papers
-        )
-
-    with col2:
-
-        st.metric(
-            label="Chunks",
-            value=total_chunks
-        )
-
-    st.metric(
-        label="Pages Indexed",
-        value=total_pages
-    )
-
-    ###########################################################################
-    # Uploaded Papers
-    ###########################################################################
-
-    st.divider()
-
-    st.subheader("📚 Uploaded Papers")
-
-    if len(st.session_state.papers) == 0:
-
-        st.info("No papers indexed yet.")
-
-    else:
-
-        for paper in st.session_state.papers:
-
-            metadata = paper["metadata"]
-
-            with st.expander(
-                f"📄 {metadata['filename']}",
-                expanded=False
-            ):
-
-                st.write(
-                    f"**Title:** {metadata['title']}"
-                )
-
-                st.write(
-                    f"**Author:** {metadata['author']}"
-                )
-
-                st.write(
-                    f"**Pages:** {metadata['pages']}"
-                )
-
-    ###########################################################################
-    # Clear Conversation
-    ###########################################################################
-
-    st.divider()
-
-    if st.button(
-        "🗑️ Clear Conversation",
-        use_container_width=True
-    ):
-
-        st.session_state.messages = []
-
-        st.success("Conversation cleared.")
-
-    ###########################################################################
-    # Footer
-    ###########################################################################
-
-    st.divider()
-
-    st.caption("📚 PaperCompass v1.0")
-
-    st.caption("Powered by Streamlit + FAISS + Groq")
-
-###############################################################################
-# RIGHT PANEL
-###############################################################################
-
-with right_col:
-
-    st.subheader("💬 Chat with Your Research Papers")
-
-    # -----------------------------------------------------------------------
-    # Welcome Screen
-    # -----------------------------------------------------------------------
-
-    if st.session_state.searcher is None:
-
-        st.info(
+        st.markdown(
             """
-            👋 Welcome to **PaperCompass**
-
-            **Getting Started**
-
-            1. Upload one or more research papers.
-            2. Click **Build Knowledge Base**.
-            3. Ask questions in natural language.
-
-            Example Questions:
-
-            • What dataset was used?
-
-            • Summarize the methodology.
-
-            • What optimizer was used?
-
-            • What are the limitations?
-
-            • What accuracy was achieved?
-
-            • What are the future works?
-            """
+            <div class="welcome-banner">
+                <h2>📚 Welcome to PaperCompass</h2>
+                <p>Your AI-powered research assistant. To get started, please follow these steps:</p>
+                <ol style="margin-left: 20px; color: #CBD5E1; font-size: 15px; line-height: 1.8; margin-top: 10px;">
+                    <li>Upload your research papers (PDFs) or choose <strong>Use Demo Papers</strong> in the sidebar.</li>
+                    <li>Click the green <strong>🚀 Build Knowledge Base</strong> button at the bottom of the sidebar.</li>
+                    <li>The dashboard and chatbot will instantly appear here to answer your questions!</li>
+                </ol>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
-    # -----------------------------------------------------------------------
-    # Display Chat History
-    # -----------------------------------------------------------------------
 
-    for message in st.session_state.messages:
+        return
 
-        with st.chat_message(message["role"]):
 
-            st.markdown(message["content"])
 
-            # Show source cards for assistant responses
-            if (
-                message["role"] == "assistant"
-                and "sources" in message
-            ):
+    # Dashboard Section
 
-                with st.expander("📚 Sources"):
+    render_dashboard(
 
-                    for source in message["sources"]:
+        st.session_state.papers,
 
-                        st.markdown(
-                            f"""
-**Paper**
+        st.session_state.chunks
 
-{source['paper']}
-
-**Chunk**
-
-{source['chunk_id']}
-
-**Similarity**
-
-{source['score']:.3f}
-"""
-                        )
-
-            # Show retrieved context
-            if (
-                message["role"] == "assistant"
-                and "context" in message
-            ):
-
-                with st.expander("🔍 Retrieved Context"):
-
-                    st.write(message["context"])
-
-    # -----------------------------------------------------------------------
-    # Chat Input
-    # -----------------------------------------------------------------------
-
-    question = st.chat_input(
-        "Ask anything about the uploaded papers..."
     )
 
-    # -----------------------------------------------------------------------
-    # User Asked Question
-    # -----------------------------------------------------------------------
 
-    if question:
 
-        # Show user message immediately
+    st.divider()
 
-        st.session_state.messages.append(
-            {
-                "role": "user",
-                "content": question
-            }
-        )
 
-        with st.chat_message("user"):
 
-            st.markdown(question)
+    # Chat Section
 
-        # ---------------------------------------------------------------
+    render_chat(
 
-        with st.chat_message("assistant"):
+        st.session_state.searcher,
 
-            if st.session_state.searcher is None:
+        st.session_state.llm
 
-                st.error(
-                    "Please build the Knowledge Base first."
-                )
+    )
 
-            else:
 
-                with st.spinner("Searching research papers..."):
 
-                    retrieval = (
-                        st.session_state.searcher.retrieve(
-                            question=question,
-                            top_k=3
-                        )
-                    )
 
-                if not retrieval["found"]:
+# =============================================================================
+# Run Application
+# =============================================================================
 
-                    answer = (
-                        "I couldn't find relevant information "
-                        "in the uploaded papers."
-                    )
+if __name__ == "__main__":
 
-                    st.warning(answer)
-
-                    st.session_state.messages.append(
-                        {
-                            "role": "assistant",
-                            "content": answer
-                        }
-                    )
-
-                else:
-
-                    with st.spinner("Generating answer..."):
-
-                        answer = (
-                            st.session_state.llm.generate(
-                                question=question,
-                                context=retrieval["context"]
-                            )
-                        )
-
-                    # ---------------------------------------------------
-
-                    st.markdown(answer)
-
-                    # ---------------------------------------------------
-                    # Similarity
-                    # ---------------------------------------------------
-
-                    st.success(
-                        f"Highest Similarity: "
-                        f"{retrieval['similarity']:.3f}"
-                    )
-
-                    # ---------------------------------------------------
-                    # Sources
-                    # ---------------------------------------------------
-
-                    with st.expander(
-                        "📚 Source Papers",
-                        expanded=False
-                    ):
-
-                        for source in retrieval["sources"]:
-
-                            st.markdown(
-                                f"""
-### 📄 {source['paper']}
-
-**Chunk:** {source['chunk_id']}
-
-**Similarity:** {source['score']:.3f}
-
-**Title:** {source['title']}
-
-**Author:** {source['author']}
-"""
-                            )
-
-                    # ---------------------------------------------------
-                    # Retrieved Context
-                    # ---------------------------------------------------
-
-                    with st.expander(
-                        "🔍 Retrieved Context"
-                    ):
-
-                        st.write(retrieval["context"])
-
-                    # ---------------------------------------------------
-                    # Save Assistant Response
-                    # ---------------------------------------------------
-
-                    st.session_state.messages.append(
-
-                        {
-                            "role": "assistant",
-
-                            "content": answer,
-
-                            "sources": retrieval["sources"],
-
-                            "context": retrieval["context"]
-                        }
-
-                    )
-
+    main()

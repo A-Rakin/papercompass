@@ -104,8 +104,10 @@ def build_knowledge_base():
     st.session_state.papers = papers
     st.session_state.chunks = chunks
     st.session_state.engine = engine
+    st.session_state.embedding_engine = engine
     st.session_state.searcher = searcher
     st.session_state.llm = llm
+    st.session_state.processed = True
 
     st.success("Knowledge Base Ready!")
 

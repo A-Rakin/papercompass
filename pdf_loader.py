@@ -110,16 +110,16 @@ class PDFLoader:
     # Public Method
     # ------------------------------------------------------------------ #
 
-    def load_papers(self) -> List[Dict]:
+    def load_papers(self, pdf_files: List[Path] = None) -> List[Dict]:
         """
-        Load every PDF inside the upload folder.
+        Load every PDF inside the upload folder or the provided list of files.
 
         Returns
         -------
         list
 
         Example
-
+        -------
         [
             {
                 "metadata": {...},
@@ -130,18 +130,16 @@ class PDFLoader:
 
         papers = []
 
-        if not self.upload_folder.exists():
-
-            raise FileNotFoundError(
-                f"Upload folder '{self.upload_folder}' does not exist."
-            )
-
-        pdf_files = sorted(self.upload_folder.glob("*.pdf"))
+        if pdf_files is None:
+            if not self.upload_folder.exists():
+                raise FileNotFoundError(
+                    f"Upload folder '{self.upload_folder}' does not exist."
+                )
+            pdf_files = sorted(self.upload_folder.glob("*.pdf"))
 
         if len(pdf_files) == 0:
-
             raise ValueError(
-                "No PDF files were found in the upload folder."
+                "No PDF files were found or provided."
             )
 
         for pdf in pdf_files:
