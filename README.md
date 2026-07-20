@@ -141,3 +141,11 @@ PaperCompass/
 
 ## 📄 License
 This project is licensed under the MIT License.
+
+<img width="1365" height="604" alt="image" src="https://github.com/user-attachments/assets/a089ee1e-065f-4d75-bc71-8070d8e35408" />
+<img width="1361" height="606" alt="image" src="https://github.com/user-attachments/assets/545e92ba-4bda-4b32-be17-3512e255bf66" />
+<img width="1365" height="602" alt="image" src="https://github.com/user-attachments/assets/6a189976-8512-4bd9-9b44-0cf4ff643b75" />
+<img width="1036" height="550" alt="image" src="https://github.com/user-attachments/assets/def4d615-f47c-4bb2-a776-f5663ac269d6" />
+<img width="953" height="429" alt="image" src="https://github.com/user-attachments/assets/be2ddde8-3e82-4ccc-bc59-d5491fb36530" />
+
+
