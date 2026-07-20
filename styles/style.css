@@ -1,0 +1,91 @@
+/* ------------------------------------------------ */
+/* Main Background */
+/* ------------------------------------------------ */
+
+.stApp{
+
+    background:#F4F7FC;
+
+}
+
+/* ------------------------------------------------ */
+
+.main-title{
+
+    font-size:40px;
+
+    font-weight:700;
+
+    color:#1E3A8A;
+
+}
+
+/* ------------------------------------------------ */
+
+.subtitle{
+
+    font-size:18px;
+
+    color:#555;
+
+}
+
+/* ------------------------------------------------ */
+
+.paper-card{
+
+    background:white;
+
+    padding:18px;
+
+    border-radius:12px;
+
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+
+    margin-bottom:15px;
+
+}
+
+/* ------------------------------------------------ */
+
+.metric-card{
+
+    background:white;
+
+    padding:20px;
+
+    border-radius:12px;
+
+    text-align:center;
+
+    box-shadow:0 2px 12px rgba(0,0,0,.08);
+
+}
+
+/* ------------------------------------------------ */
+
+.answer-card{
+
+    background:white;
+
+    padding:20px;
+
+    border-left:5px solid #2563EB;
+
+    border-radius:12px;
+
+    box-shadow:0 3px 12px rgba(0,0,0,.08);
+
+}
+
+/* ------------------------------------------------ */
+
+.source-card{
+
+    background:#EEF4FF;
+
+    padding:15px;
+
+    border-radius:10px;
+
+}
