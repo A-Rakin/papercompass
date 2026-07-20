@@ -264,6 +264,7 @@ Example:
             )
 
     def render_chat_statistics(self):
+        """Render chat statistics using custom HTML cards."""
         st.markdown("### 📊 Conversation Statistics")
         total_messages = len(st.session_state.messages)
         user_questions = len([m for m in st.session_state.messages if m["role"] == "user"])
@@ -271,11 +272,35 @@ Example:
 
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.metric("Messages", total_messages)
+            st.markdown(
+                f"""
+                <div class="custom-metric-card">
+                    <div class="metric-val">{total_messages}</div>
+                    <div class="metric-lbl">💬 Messages</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
         with c2:
-            st.metric("Questions", user_questions)
+            st.markdown(
+                f"""
+                <div class="custom-metric-card">
+                    <div class="metric-val">{user_questions}</div>
+                    <div class="metric-lbl">👤 Questions</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
         with c3:
-            st.metric("Answers", ai_answers)
+            st.markdown(
+                f"""
+                <div class="custom-metric-card">
+                    <div class="metric-val">{ai_answers}</div>
+                    <div class="metric-lbl">🤖 Answers</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
     def render_markdown_help(self):
         with st.expander("📝 Markdown Supported"):

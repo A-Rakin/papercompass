@@ -3,23 +3,12 @@
 PaperCompass
 Dashboard Component
 
-Author:
-    Your Name
-
 Description:
     This module renders the dashboard section of PaperCompass.
-
-Responsibilities:
-    • Dashboard Header
-    • Statistics Cards
-    • Knowledge Base Status
-    • Model Information
-    • Empty State
 ===============================================================================
 """
 
 from __future__ import annotations
-
 import streamlit as st
 
 
@@ -34,29 +23,15 @@ class Dashboard:
         - Empty State
     """
 
-    ###########################################################################
-    # Constructor
-    ###########################################################################
-
     def __init__(self) -> None:
-
         self.papers = st.session_state.get("papers", [])
-
         self.chunks = st.session_state.get("chunks", [])
-
         self.engine = st.session_state.get("engine")
-
         self.searcher = st.session_state.get("searcher")
-
         self.llm = st.session_state.get("llm")
-
-    ###########################################################################
-    # Header
-    ###########################################################################
 
     def render_header(self) -> None:
         """Render dashboard title."""
-
         st.markdown(
             """
             ## 📊 Dashboard
@@ -68,89 +43,66 @@ class Dashboard:
             """
         )
 
-    ###########################################################################
-    # Statistics
-    ###########################################################################
-
     def render_statistics(self) -> None:
-        """Display dashboard metrics."""
-
+        """Display dashboard metrics using custom HTML cards."""
         total_papers = len(self.papers)
-
         total_chunks = len(self.chunks)
-
         total_pages = sum(
-
             paper["metadata"]["pages"]
-
             for paper in self.papers
-
         )
 
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:
-
-            st.metric(
-
-                label="📄 Papers",
-
-                value=total_papers
-
+            st.markdown(
+                f"""
+                <div class="custom-metric-card">
+                    <div class="metric-val">{total_papers}</div>
+                    <div class="metric-lbl">📄 Papers</div>
+                </div>
+                """,
+                unsafe_allow_html=True
             )
 
         with c2:
-
-            st.metric(
-
-                label="📑 Pages",
-
-                value=total_pages
-
+            st.markdown(
+                f"""
+                <div class="custom-metric-card">
+                    <div class="metric-val">{total_pages}</div>
+                    <div class="metric-lbl">📑 Pages</div>
+                </div>
+                """,
+                unsafe_allow_html=True
             )
 
         with c3:
-
-            st.metric(
-
-                label="🧩 Chunks",
-
-                value=total_chunks
-
+            st.markdown(
+                f"""
+                <div class="custom-metric-card">
+                    <div class="metric-val">{total_chunks}</div>
+                    <div class="metric-lbl">🧩 Chunks</div>
+                </div>
+                """,
+                unsafe_allow_html=True
             )
 
         with c4:
-
-            if self.engine is None:
-
-                st.metric(
-
-                    label="🤖 Embedding",
-
-                    value="Not Ready"
-
-                )
-
-            else:
-
-                st.metric(
-
-                    label="🤖 Embedding",
-
-                    value="MiniLM"
-
-                )
-
-    ###########################################################################
-    # Knowledge Base Status
-    ###########################################################################
+            embed_model = "MiniLM" if self.engine is not None else "Not Ready"
+            st.markdown(
+                f"""
+                <div class="custom-metric-card">
+                    <div class="metric-val">{embed_model}</div>
+                    <div class="metric-lbl">🤖 Embedding</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
     def render_kb_status(self) -> None:
-
         st.subheader("Knowledge Base")
 
         if self.engine is None:
-
             st.warning(
                 """
                 No Knowledge Base detected.
@@ -159,7 +111,6 @@ class Dashboard:
                 and build the vector database.
                 """
             )
-
             return
 
         st.success("Knowledge Base Ready")
@@ -167,29 +118,19 @@ class Dashboard:
         col1, col2 = st.columns(2)
 
         with col1:
-
             st.write("**Semantic Search**")
-
             st.success("Available")
 
         with col2:
-
             st.write("**LLM**")
-
             st.success("Connected")
 
-    ###########################################################################
-    # Model Information
-    ###########################################################################
-
     def render_model_information(self) -> None:
-
         st.subheader("AI Models")
 
         col1, col2 = st.columns(2)
 
         with col1:
-
             st.info(
                 """
                 **Embedding Model**
@@ -199,7 +140,6 @@ class Dashboard:
             )
 
         with col2:
-
             st.info(
                 """
                 **Large Language Model**
@@ -209,10 +149,6 @@ class Dashboard:
                 """
             )
 
-    ###########################################################################
-    # Empty State
-    ###########################################################################
-
     def render_empty_state(self) -> bool:
         """
         Returns
@@ -220,9 +156,7 @@ class Dashboard:
         bool
             True if dashboard should stop rendering.
         """
-
         if len(self.papers) != 0:
-
             return False
 
         st.divider()
@@ -253,13 +187,8 @@ class Dashboard:
 
         return True
 
-    ###########################################################################
-    # Paper Cards
-    ###########################################################################
-
     def render_paper_cards(self) -> None:
-        """Render uploaded paper cards."""
-
+        """Render uploaded paper cards using custom HTML glassmorphic designs."""
         st.subheader("📚 Indexed Research Papers")
 
         for index, paper in enumerate(self.papers, start=1):
@@ -273,26 +202,23 @@ class Dashboard:
                 ]
             )
 
-            with st.container(border=True):
-                col1, col2 = st.columns([5, 1])
+            st.markdown(
+                f"""
+                <div class="custom-paper-card">
+                    <h3>📄 {metadata['filename']}</h3>
+                    <div class="meta-grid">
+                        <div class="meta-item"><span class="meta-label">Title:</span> {metadata.get('title', 'Unknown')}</div>
+                        <div class="meta-item"><span class="meta-label">Author:</span> {metadata.get('author', 'Unknown')}</div>
+                        <div class="meta-item"><span class="meta-label">Pages:</span> {metadata.get('pages', 0)}</div>
+                        <div class="meta-item"><span class="meta-label">Chunks:</span> {chunk_count}</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-                with col1:
-                    st.markdown(f"### 📄 {metadata['filename']}")
-
-                    st.write(f"**Title:** {metadata.get('title', 'Unknown')}")
-
-                    st.write(f"**Author:** {metadata.get('author', 'Unknown')}")
-
-                    st.write(f"**Pages:** {metadata.get('pages', 0)}")
-
-                with col2:
-                    st.metric(
-                        label="Chunks",
-                        value=chunk_count
-                    )
-
-                with st.expander("📖 Preview Metadata"):
-                    st.json(metadata)
+            with st.expander("📖 Preview Metadata"):
+                st.json(metadata)
 
     def render_dataset_analytics(self) -> None:
         st.subheader("📈 Collection Analytics")
